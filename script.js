@@ -14,11 +14,19 @@ async function start() {
         }
         console.log("Updating Confluence page with sonarQube stats");
         await confluence.updateByPageId(confluenceConfig.pageId, stats);
+        console.log("Successfully updated Confluence page");
 
-    } catch (err) {
-        console.error("Error in fetch and updating stats", err);
+    } catch (error) {
+        console.error("Error in fetching and updating stats");
+        if (error.response) {
+            console.log("Error data:", error.response.data);
+            console.log("Status:", error.response.status);
+        } else if (error.request) {
+            console.log(error.request);
+        } else {
+            console.log('Error', error.message);
+        }
     }
-
 }
 
 
