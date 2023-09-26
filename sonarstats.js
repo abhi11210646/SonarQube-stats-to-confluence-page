@@ -1,20 +1,27 @@
 
 const axios = require('axios');
-const { sonar } = require("./credentials.json");
+const { sonarConfig } = require("./credentials.json");
 
-const apiKey = sonar.api_key;
+const apiKey = sonarConfig.api_key;
 
 class Sonar {
+    #serialize(data) {
+        const stats = {};
+        data.measures.forEach(m => {
+            stats[m.metric] = m
+        });
+        return stats;
+    }
     async sonarStats(projectKey) {
-        const apiEndpoint = `${sonar.host}/api/measures/component?component=${projectKey}&metricKeys=quality_gate_details`;
+        const apiEndpoint = `${sonarConfig.host}/api/measures/component?component=${projectKey}&metricKeys=${sonarConfig.metricKeys.join(",")}`;
         const axiosConfig = {
             method: "GET",
             headers: {
-                'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+                'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`
             }
         };
-        const { data } = await axios.get(apiEndpoint, axiosConfig);
-        return data.component;
+        const { data: { component } } = await axios.get(apiEndpoint, axiosConfig);
+        return component
     }
 }
 

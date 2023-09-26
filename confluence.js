@@ -1,7 +1,7 @@
 const axios = require('axios');
-const { confluence } = require("./credentials.json");
+const { confluenceConfig } = require("./credentials.json");
 
-const apiKey = confluence.api_key;
+const apiKey = confluenceConfig.api_key;
 
 class Confluence {
     constructor() {
@@ -14,18 +14,18 @@ class Confluence {
         }
     }
     async getByPageId(pageId) {
-        const apiEndpoint = `${confluence.host}/api/content/${pageId}?expand=body.storage,version`;
+        const apiEndpoint = `${confluenceConfig.host}/api/content/${pageId}?expand=body.storage,version`;
         const { data } = await axios.get(apiEndpoint, this.axiosConfig);
         // extract necessary details
         let { type, title, body, version } = data;
         return { type, title, body, version };
     }
-    async updateByPageId(pageId) {
-        const apiEndpoint = `${confluence.host}/api/content/${pageId}?expand=body.storage`;
+    async updateByPageId(pageId, sonarStats = []) {
+        const apiEndpoint = `${confluenceConfig.host}/api/content/${pageId}?expand=body.storage`;
         // fetch Content
         const page = await this.getByPageId(pageId);
         // Update content with sonar stats
-        let updatedContent = page.body.storage.value; // update content
+        let updatedContent = this.#generateHTML(sonarStats); // update content
         // Generate Request Body
         const bodyData = {
             title: page.title,
@@ -42,6 +42,11 @@ class Confluence {
         }
         await axios.put(apiEndpoint, bodyData, this.axiosConfig);
         return true;
+    }
+    #generateHTML(sonarStats) {
+        //TODO: generate HTML
+
+        return JSON.stringify(sonarStats);
     }
 }
 
