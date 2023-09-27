@@ -6,11 +6,12 @@ const apiKey = sonarConfig.api_key;
 
 class Sonar {
     #serialize(data) {
-        const stats = {};
-        data.measures.forEach(m => {
-            stats[m.metric] = m
-        });
-        return stats;
+        const obj = {};
+        for (let measure of data.measures) {
+            obj[measure.metric] = measure.value;
+        }
+        data.measures = obj;
+        return data;
     }
     async sonarStats(projectKey) {
         const apiEndpoint = `${sonarConfig.host}/api/measures/component?component=${projectKey}&metricKeys=${sonarConfig.metricKeys.join(",")}`;
@@ -21,7 +22,7 @@ class Sonar {
             }
         };
         const { data: { component } } = await axios.get(apiEndpoint, axiosConfig);
-        return component
+        return this.#serialize(component);
     }
 }
 

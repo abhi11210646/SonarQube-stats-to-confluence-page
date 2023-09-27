@@ -25,7 +25,7 @@ class Confluence {
         // fetch Content
         const page = await this.getByPageId(pageId);
         // Update content with sonar stats
-        let updatedContent = this.#generateHTML(sonarStats); // update content
+        let updatedContent = this.#generateHTML(page.body, sonarStats); // update content
         // Generate Request Body
         const bodyData = {
             title: page.title,
@@ -43,10 +43,24 @@ class Confluence {
         await axios.put(apiEndpoint, bodyData, this.axiosConfig);
         return true;
     }
-    #generateHTML(sonarStats) {
-        //TODO: generate HTML
+    #generateHTML({ storage }, sonarStats) {
+        const columns = [{ name: 'Quality Gate', key: "alert_status" }, { name: 'Code Smells', key: "code_smells" }];
 
-        return JSON.stringify(sonarStats);
+        let trs = sonarStats.map(stat => {
+            let tds = columns.map(c => {
+                let value = stat.measures[c.key];
+                return `<td>${value == 'ERROR' ? 'Failed' : value}</td>`
+            }).join("");
+            return `<tr> <td>${stat.name}</td>${tds}</tr>`;
+        }).join("");
+
+        const html = `<table data-table-width="760" data-layout="default" ac:local-id="091ca39e-2b3b-4a0c-8720-7ee499fc6d65">
+                        <tbody>
+                            <tr><th><p><strong>Product</strong></p></th><th><p><strong>Quality Gate</strong></p></th><th><p><strong>Code Smells</strong></p></th></tr>
+                            ${trs}
+                        </tbody>
+                    </table>`;
+        return html;
     }
 }
 
