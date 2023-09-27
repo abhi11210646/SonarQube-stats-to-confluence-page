@@ -44,19 +44,30 @@ class Confluence {
         return true;
     }
     #generateHTML({ storage }, sonarStats) {
-        const columns = [{ name: 'Quality Gate', key: "alert_status" }, { name: 'Code Smells', key: "code_smells" }];
+        const columns = [
+            { name: 'Product', key: "name" },
+            { name: 'Quality Gate', key: "alert_status" },
+            { name: 'Code Smells', key: "code_smells" },
+            { name: 'Bugs', key: "bugs" },
+            { name: 'Vulnerabilities', key: "critical_severity_vulns" },
+        ];
+
+        let th = columns.map(c => {
+            return `<th><p><strong>${c.name}</strong></p></th>`
+        }).join("");
 
         let trs = sonarStats.map(stat => {
             let tds = columns.map(c => {
                 let value = stat.measures[c.key];
+                if (c.key == "name") value = stat.name;
                 return `<td>${value == 'ERROR' ? 'Failed' : value}</td>`
             }).join("");
-            return `<tr> <td>${stat.name}</td>${tds}</tr>`;
+            return `<tr>${tds}</tr>`;
         }).join("");
 
         const html = `<table data-table-width="760" data-layout="default" ac:local-id="091ca39e-2b3b-4a0c-8720-7ee499fc6d65">
                         <tbody>
-                            <tr><th><p><strong>Product</strong></p></th><th><p><strong>Quality Gate</strong></p></th><th><p><strong>Code Smells</strong></p></th></tr>
+                            <tr>${th}</tr>
                             ${trs}
                         </tbody>
                     </table>`;
