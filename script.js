@@ -1,6 +1,7 @@
+require("dotenv").config();
 const sonar = require("./sonarstats");
 const confluence = require("./confluence");
-const { sonarConfig, confluenceConfig } = require("./credentials.json");
+const { sonarConfig, confluenceConfig } = require("./config");
 
 
 async function start() {

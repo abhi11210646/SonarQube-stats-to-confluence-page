@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { confluenceConfig } = require("./credentials.json");
+const { confluenceConfig } = require("./config")
 
 const apiKey = confluenceConfig.api_key;
 
