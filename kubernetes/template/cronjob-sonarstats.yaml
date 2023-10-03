@@ -1,0 +1,41 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-sonarstats-${RELEASE_ENVIRONMENT}
+  namespace: $K8S_NAMESPACE
+spec:
+  schedule: "0 3 * * 1"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: ${APP_NAME}-app-${RELEASE_ENVIRONMENT}-sonarstats
+            image: $IMAGE
+            command:
+            - /bin/sh
+            - -c
+            - "node script.js"
+            imagePullPolicy: IfNotPresent
+            env:
+              - name: NODE_ENV
+                value: ${RELEASE_ENVIRONMENT}
+              - name: SONAR_API_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: api-secret
+                    key: sonar_api_key
+              - name: CONFLUENCE_API_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: api-secret
+                    key: confluence_api_key
+            resources:
+              limits:
+                cpu: ${RESOURCES_LIMITS_CPU}
+                memory: ${RESOURCES_LIMITS_MEM}
+              requests:
+                cpu: ${RESOURCES_REQUESTS_CPU}
+                memory: ${RESOURCES_REQUESTS_MEM}
+          restartPolicy: OnFailure
