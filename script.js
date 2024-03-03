@@ -1,6 +1,6 @@
 require("dotenv").config();
-const sonar = require("./sonarstats");
-const confluence = require("./confluence");
+const sonar = require("./scripts/sonarstats");
+const confluence = require("./scripts/confluence");
 const { sonarConfig, confluenceConfig } = require("./config");
 
 

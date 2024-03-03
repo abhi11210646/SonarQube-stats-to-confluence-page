@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@gitlab.one.com:webdev-india/sonarqube-data-to-confluence.git"
+    "url": "git@github.com:abhi11210646/SonarQube-stats-to-confluence-page.git"
   },
   "author": "DEVIN",
   "license": "ISC",

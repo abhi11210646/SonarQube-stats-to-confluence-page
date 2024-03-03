@@ -1,6 +1,6 @@
 
 const axios = require('axios');
-const { sonarConfig } = require("./config");
+const { sonarConfig } = require("../config");
 
 const apiKey = sonarConfig.api_key;
 
