@@ -1,5 +1,13 @@
 package main
 
 func main() {
-	SonarStats("app.webmail")
+	// sonarConfig := GetSonarConfig()
+
+	// for _, projectKey := range SonarConfig.Projects {
+	// SonarStats("app.webmail")
+	// }
+
+	// getByPageId()
+
+	updateByPageId()
 }

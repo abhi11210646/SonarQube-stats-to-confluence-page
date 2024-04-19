@@ -22,12 +22,11 @@ type Measure struct {
 }
 
 func SonarStats(projectKey string) Stats {
-	sonarConfig := GetSonarConfig()
-	apiEndpoint := sonarConfig.Host + "/api/measures/component?component=" + projectKey + "&metricKeys=" + strings.Join(sonarConfig.Metrics, ",")
+	apiEndpoint := SonarConfig.Host + "/api/measures/component?component=" + projectKey + "&metricKeys=" + strings.Join(SonarConfig.Metrics, ",")
 
 	// Create new request and pass headers
 	req, _ := http.NewRequest("GET", apiEndpoint, nil)
-	key := base64.StdEncoding.EncodeToString([]byte(sonarConfig.ApiKey + ":"))
+	key := base64.StdEncoding.EncodeToString([]byte(SonarConfig.ApiKey + ":"))
 	req.Header.Add("Authorization", "Basic "+key)
 
 	client := &http.Client{}
@@ -53,5 +52,6 @@ func SonarStats(projectKey string) Stats {
 		fmt.Println("Error in UnMarshaling: ", err)
 		os.Exit(1)
 	}
+	fmt.Println("done fetching stats for", projectKey)
 	return stats
 }
