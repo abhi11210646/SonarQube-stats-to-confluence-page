@@ -107,7 +107,7 @@ func updateByPageId(stats []Stats) {
 		fmt.Println("[updateByPageId]Error response from Confluence API: ", resp.Status, string(body))
 		os.Exit(1)
 	}
-	fmt.Println("Stats updated to confluence page!")
+	fmt.Println("Stats updated to confluence page! Success.")
 }
 
 func generetaeHTML(stats []Stats) string {
