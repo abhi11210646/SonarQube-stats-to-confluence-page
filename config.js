@@ -12,8 +12,7 @@ const sonarConfig = {
         "code_smells",
         "critical_severity_vulns",
         "bugs",
-        "alert_status",
-        "quality_gate_details"
+        "alert_status"
     ]
 }
 const confluenceConfig = {

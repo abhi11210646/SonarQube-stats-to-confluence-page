@@ -25,7 +25,6 @@ var SonarConfig = struct {
 		"critical_severity_vulns",
 		"bugs",
 		"alert_status",
-		"quality_gate_details",
 	},
 }
 
@@ -36,5 +35,5 @@ var ConfluenceConfig = struct {
 }{
 	Host:   "https://group-one.atlassian.net/wiki/rest/",
 	ApiKey: env["CONFLUENCE_API_KEY"],
-	PageId: 32951664791,
+	PageId: 32954647094,
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"os"
@@ -64,7 +65,7 @@ func getByPageId() Page {
 	return page
 }
 
-func updateByPageId() {
+func updateByPageId(stats Stats) {
 	apiEndpoint := ConfluenceConfig.Host + "/api/content/" + strconv.Itoa(ConfluenceConfig.PageId) + "?expand=body.storage"
 	var page Page = getByPageId()
 
@@ -73,12 +74,12 @@ func updateByPageId() {
 		Type:  page.Type,
 		Version: Version{
 			Number:  page.Version.Number + 1,
-			Message: page.Version.Message,
+			Message: "Updated by CronJob",
 		},
 		Body: Body{
 			Storage: Storage{
 				Representation: "storage",
-				Value:          "hhh4444444h",
+				Value:          generetaeHTML(stats),
 			},
 		},
 	}
@@ -107,4 +108,59 @@ func updateByPageId() {
 		fmt.Println("[updateByPageId]Error response from Confluence API: ", resp.Status, string(body))
 		os.Exit(1)
 	}
+	fmt.Println("Stats updated to confluence page!")
+}
+
+func generetaeHTML(stats Stats) string {
+	// Mappings for Header Title
+	Columns := map[string]string{
+		"name":                    "Product",
+		"alert_status":            "Quality Gate",
+		"code_smells":             "Code Smells",
+		"bugs":                    "Bugs",
+		"critical_severity_vulns": "Vulnerabilities",
+	}
+
+	// Table Header
+	Keys := SonarConfig.Metrics
+	headers := make([]string, len(Keys)+1)
+	headers[0] = "Product" // First column Product name
+	for i, k := range Keys {
+		if name, ok := Columns[k]; ok {
+			headers[i+1] = name
+		} else {
+			headers[i+1] = k
+		}
+	}
+	// Template Data for HTML parser
+	var TemplateData = struct {
+		Headers []string
+		Stats   Stats
+	}{
+		Headers: headers,
+		Stats:   stats,
+	}
+	const html = `<table data-table-width="760" data-layout="default" ac:local-id="091ca39e-2b3b-4a0c-8720-7ee499fc6d65">
+		<tbody>
+				<tr>
+					{{ range .Headers }}
+					<th><p><strong>{{.}}</strong></p></th>
+					{{end}}
+				</tr>
+
+				<tr>
+				<td> {{ .Stats.Component.Name }} </td>
+				{{range .Stats.Component.Measures}}
+				<td> {{ .Value }} </td>
+				{{end}}
+				</tr>
+				
+		</tbody>
+	</table>`
+
+	t, _ := template.New("confluence").Parse(html)
+
+	var buf bytes.Buffer
+	t.Execute(&buf, TemplateData)
+	return buf.String()
 }

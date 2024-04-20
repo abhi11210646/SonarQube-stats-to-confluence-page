@@ -22,6 +22,7 @@ type Measure struct {
 }
 
 func SonarStats(projectKey string) Stats {
+	fmt.Println("Fetching stats for", projectKey)
 	apiEndpoint := SonarConfig.Host + "/api/measures/component?component=" + projectKey + "&metricKeys=" + strings.Join(SonarConfig.Metrics, ",")
 
 	// Create new request and pass headers
@@ -52,6 +53,6 @@ func SonarStats(projectKey string) Stats {
 		fmt.Println("Error in UnMarshaling: ", err)
 		os.Exit(1)
 	}
-	fmt.Println("done fetching stats for", projectKey)
+	fmt.Println("Done fetching stats for", projectKey)
 	return stats
 }
