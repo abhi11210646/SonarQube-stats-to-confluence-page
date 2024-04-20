@@ -65,10 +65,9 @@ func getByPageId() Page {
 	return page
 }
 
-func updateByPageId(stats Stats) {
+func updateByPageId(stats []Stats) {
 	apiEndpoint := ConfluenceConfig.Host + "/api/content/" + strconv.Itoa(ConfluenceConfig.PageId) + "?expand=body.storage"
-	var page Page = getByPageId()
-
+	page := getByPageId()
 	newPage := Page{
 		Title: page.Title,
 		Type:  page.Type,
@@ -111,7 +110,7 @@ func updateByPageId(stats Stats) {
 	fmt.Println("Stats updated to confluence page!")
 }
 
-func generetaeHTML(stats Stats) string {
+func generetaeHTML(stats []Stats) string {
 	// Mappings for Header Title
 	Columns := map[string]string{
 		"name":                    "Product",
@@ -121,8 +120,9 @@ func generetaeHTML(stats Stats) string {
 		"critical_severity_vulns": "Vulnerabilities",
 	}
 
-	// Table Header
 	Keys := SonarConfig.Metrics
+
+	// Table Header
 	headers := make([]string, len(Keys)+1)
 	headers[0] = "Product" // First column Product name
 	for i, k := range Keys {
@@ -132,13 +132,35 @@ func generetaeHTML(stats Stats) string {
 			headers[i+1] = k
 		}
 	}
+
+	// Table Body
+	body := [][]string{}
+	for _, stat := range stats {
+		metrics := make(map[string]string)
+		for _, v := range stat.Component.Measures {
+			metrics[v.Metric] = v.Value
+		}
+		s := make([]string, len(stat.Component.Measures)+1)
+		s[0] = stat.Component.Name // First column is Product Name
+
+		for i, k := range Keys {
+
+			if metrics[k] == "ERROR" {
+				s[i+1] = "Failed"
+			} else {
+				s[i+1] = metrics[k]
+			}
+
+		}
+		body = append(body, s)
+	}
 	// Template Data for HTML parser
 	var TemplateData = struct {
 		Headers []string
-		Stats   Stats
+		Body    [][]string
 	}{
 		Headers: headers,
-		Stats:   stats,
+		Body:    body,
 	}
 	const html = `<table data-table-width="760" data-layout="default" ac:local-id="091ca39e-2b3b-4a0c-8720-7ee499fc6d65">
 		<tbody>
@@ -148,12 +170,15 @@ func generetaeHTML(stats Stats) string {
 					{{end}}
 				</tr>
 
+				
+				{{range .Body}}
 				<tr>
-				<td> {{ .Stats.Component.Name }} </td>
-				{{range .Stats.Component.Measures}}
-				<td> {{ .Value }} </td>
+				{{range .}}
+				 <td> {{ . }} </td>
 				{{end}}
 				</tr>
+				{{end}}
+				
 				
 		</tbody>
 	</table>`
