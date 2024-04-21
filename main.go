@@ -1,9 +1,16 @@
 package main
 
+import (
+	"gitlab.group.one/sonar-to-confluence/config"
+	"gitlab.group.one/sonar-to-confluence/confluence"
+	"gitlab.group.one/sonar-to-confluence/sonar"
+)
+
 func main() {
-	var stats []Stats
-	for _, projectKey := range SonarConfig.Projects {
-		stats = append(stats, SonarStats(projectKey))
+	sonarConfig := config.GetSonarConfig()
+	var stats []sonar.Stats
+	for _, projectKey := range sonarConfig.Projects {
+		stats = append(stats, sonar.FetchStats(projectKey))
 	}
-	updateByPageId(stats)
+	confluence.UpdateStats(stats)
 }
