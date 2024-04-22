@@ -16,6 +16,7 @@ import (
 )
 
 var confluenceConfig = config.GetConfluenceConfig()
+var sonarConfig = config.GetSonarConfig()
 
 func getByPageId() Page {
 
@@ -106,8 +107,7 @@ func generetaeHTML(stats []sonar.Stats) string {
 		"critical_severity_vulns": "Vulnerabilities",
 	}
 
-	// Keys := config.SonarConfig.Metrics
-	Keys := []string{}
+	Keys := sonarConfig.Metrics
 	// Table Header
 	headers := make([]string, len(Keys)+1)
 	headers[0] = "Product" // First column Product name
