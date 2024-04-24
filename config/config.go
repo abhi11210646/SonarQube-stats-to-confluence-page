@@ -23,7 +23,7 @@ func GetConfluenceConfig() ConfluenceConfig {
 	return ConfluenceConfig{
 		Host:   "https://group-one.atlassian.net/wiki/rest/",
 		ApiKey: os.Getenv("CONFLUENCE_API_KEY"),
-		PageId: 32954647094,
+		PageId: 32589873205,
 	}
 }
 
