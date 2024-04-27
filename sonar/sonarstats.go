@@ -8,22 +8,33 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"gitlab.group.one/sonar-to-confluence/config"
 )
 
-var sonarConfig = config.GetSonarConfig()
+type SonarClient struct {
+	config.Config
+}
 
-func FetchStats(projectKey string) Stats {
+func NewSonarClient(config config.Config) SonarClient {
+	return SonarClient{
+		config,
+	}
+}
+
+func (s SonarClient) FetchStats(projectKey string) Stats {
 	fmt.Printf("Fetching stats for %s... ", projectKey)
-	apiEndpoint := sonarConfig.Host + "/api/measures/component?component=" + projectKey + "&metricKeys=" + strings.Join(sonarConfig.Metrics, ",")
+	apiEndpoint := s.Sonar.Host + "/api/measures/component?component=" + projectKey + "&metricKeys=" + strings.Join(s.Sonar.Metrics, ",")
 
 	// Create new request and pass headers
 	req, _ := http.NewRequest("GET", apiEndpoint, nil)
-	key := base64.StdEncoding.EncodeToString([]byte(sonarConfig.ApiKey + ":"))
+	key := base64.StdEncoding.EncodeToString([]byte(s.Sonar.ApiKey + ":"))
 	req.Header.Add("Authorization", "Basic "+key)
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Second * 5,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("Error in fetching SonarStats", err)

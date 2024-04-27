@@ -7,10 +7,13 @@ import (
 )
 
 func main() {
-	sonarConfig := config.GetSonarConfig()
+	config := config.GetConfig()
+	sonarClient := sonar.NewSonarClient(config)
+	// Fetch all stats
 	var stats []sonar.Stats
-	for _, projectKey := range sonarConfig.Projects {
-		stats = append(stats, sonar.FetchStats(projectKey))
+	for _, projectKey := range config.Sonar.Projects {
+		stats = append(stats, sonarClient.FetchStats(projectKey))
 	}
-	confluence.UpdateStats(stats)
+	// Update stats to confluence page
+	confluence.NewConfluenceClient(config).UpdateStats(stats)
 }

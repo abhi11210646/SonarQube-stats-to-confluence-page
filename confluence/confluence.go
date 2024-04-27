@@ -10,23 +10,33 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"gitlab.group.one/sonar-to-confluence/config"
 	"gitlab.group.one/sonar-to-confluence/sonar"
 )
 
-var confluenceConfig = config.GetConfluenceConfig()
-var sonarConfig = config.GetSonarConfig()
+type Confluence struct {
+	config.Config
+}
 
-func getByPageId() Page {
+func NewConfluenceClient(config config.Config) Confluence {
+	return Confluence{
+		config,
+	}
+}
 
+func (c Confluence) fetchPage() Page {
+	confluenceConfig := c.Confluence
 	apiEndpoint := confluenceConfig.Host + "/api/content/" + strconv.Itoa(confluenceConfig.PageId) + "?expand=body.storage,version"
 
 	req, _ := http.NewRequest("GET", apiEndpoint, nil)
 	key := base64.StdEncoding.EncodeToString([]byte(confluenceConfig.ApiKey))
 	req.Header.Add("Authorization", "Basic "+key)
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Second * 5,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("[getByPageId]Error in fetching Confluence API", err)
@@ -52,9 +62,10 @@ func getByPageId() Page {
 	return page
 }
 
-func UpdateStats(stats []sonar.Stats) {
+func (c Confluence) UpdateStats(stats []sonar.Stats) {
+	confluenceConfig := c.Confluence
 	apiEndpoint := confluenceConfig.Host + "/api/content/" + strconv.Itoa(confluenceConfig.PageId) + "?expand=body.storage"
-	page := getByPageId()
+	page := c.fetchPage()
 	newPage := Page{
 		Title: page.Title,
 		Type:  page.Type,
@@ -65,7 +76,7 @@ func UpdateStats(stats []sonar.Stats) {
 		Body: Body{
 			Storage: Storage{
 				Representation: "storage",
-				Value:          generetaeHTML(stats),
+				Value:          generetaeHTML(stats, c.Sonar.Metrics),
 			},
 		},
 	}
@@ -77,7 +88,9 @@ func UpdateStats(stats []sonar.Stats) {
 	req.Header.Add("Authorization", "Basic "+key)
 	req.Header.Add("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Second * 5,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("[updateByPageId]Error in fetching Confluence API", err)
@@ -97,7 +110,7 @@ func UpdateStats(stats []sonar.Stats) {
 	fmt.Println("Stats updated to confluence page! Success.")
 }
 
-func generetaeHTML(stats []sonar.Stats) string {
+func generetaeHTML(stats []sonar.Stats, keys []string) string {
 	// Mappings for Header Title
 	Columns := map[string]string{
 		"name":                    "Product",
@@ -106,12 +119,10 @@ func generetaeHTML(stats []sonar.Stats) string {
 		"bugs":                    "Bugs",
 		"critical_severity_vulns": "Vulnerabilities",
 	}
-
-	Keys := sonarConfig.Metrics
 	// Table Header
-	headers := make([]string, len(Keys)+1)
+	headers := make([]string, len(keys)+1)
 	headers[0] = "Product" // First column Product name
-	for i, k := range Keys {
+	for i, k := range keys {
 		if name, ok := Columns[k]; ok {
 			headers[i+1] = name
 		} else {
@@ -129,14 +140,12 @@ func generetaeHTML(stats []sonar.Stats) string {
 		s := make([]string, len(stat.Component.Measures)+1)
 		s[0] = stat.Component.Name // First column is Product Name
 
-		for i, k := range Keys {
-
+		for i, k := range keys {
 			if metrics[k] == "ERROR" {
 				s[i+1] = "Failed"
 			} else {
 				s[i+1] = metrics[k]
 			}
-
 		}
 		body = append(body, s)
 	}

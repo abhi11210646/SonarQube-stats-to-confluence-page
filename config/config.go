@@ -19,29 +19,33 @@ type ConfluenceConfig struct {
 	PageId int
 }
 
-func GetConfluenceConfig() ConfluenceConfig {
-	return ConfluenceConfig{
-		Host:   "https://group-one.atlassian.net/wiki/rest/",
-		ApiKey: os.Getenv("CONFLUENCE_API_KEY"),
-		PageId: 32589873205,
-	}
+type Config struct {
+	Sonar      SonarConfig
+	Confluence ConfluenceConfig
 }
 
-func GetSonarConfig() SonarConfig {
-	return SonarConfig{
-		Host:   "https://sonarqube.one.com",
-		ApiKey: os.Getenv("SONAR_API_KEY"),
-		Projects: []string{
-			"app.webmail",
-			"CompanionApp",
-			"Webshop",
-			"one.com-wp-addons-assets",
+func GetConfig() Config {
+	return Config{
+		Confluence: ConfluenceConfig{
+			Host:   "https://group-one.atlassian.net/wiki/rest/",
+			ApiKey: os.Getenv("CONFLUENCE_API_KEY"),
+			PageId: 32589873205,
 		},
-		Metrics: []string{
-			"alert_status",
-			"code_smells",
-			"critical_severity_vulns",
-			"bugs",
+		Sonar: SonarConfig{
+			Host:   "https://sonarqube.one.com",
+			ApiKey: os.Getenv("SONAR_API_KEY"),
+			Projects: []string{
+				"app.webmail",
+				"CompanionApp",
+				"Webshop",
+				"one.com-wp-addons-assets",
+			},
+			Metrics: []string{
+				"alert_status",
+				"code_smells",
+				"critical_severity_vulns",
+				"bugs",
+			},
 		},
 	}
 }
