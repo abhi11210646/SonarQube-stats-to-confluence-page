@@ -14,4 +14,4 @@ FROM harbor.one.com/standard-images/ubuntu:focal
 
 WORKDIR /src
 
-COPY --from=builder  /build .
+COPY --from=builder  /build/sonar-to-confluence .
