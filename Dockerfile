@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . ./
 
-RUN CGO_ENABLED=0 GOOS=linux go build .
+RUN CGO_ENABLED=0 GOOS=linux go build -o ./sonar-to-confluence ./cmd
 
 FROM harbor.one.com/standard-images/ubuntu:focal
 

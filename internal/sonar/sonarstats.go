@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
-	"gitlab.group.one/sonar-to-confluence/config"
+	"gitlab.group.one/sonar-to-confluence/internal/config"
 )
 
 type SonarClient struct {
@@ -33,29 +33,25 @@ func (s SonarClient) FetchStats(projectKey string) Stats {
 	req.Header.Add("Authorization", "Basic "+key)
 
 	client := &http.Client{
-		Timeout: time.Second * 5,
+		Timeout: time.Second * 10,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error in fetching SonarStats", err)
-		os.Exit(1)
+		log.Fatal("Error in fetching SonarStats", err)
 	}
 	defer resp.Body.Close()
 	// Read Response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error in reading response body", err)
-		os.Exit(1)
+		log.Fatal("Error in reading response body", err)
 	}
 	if resp.StatusCode != 200 {
-		fmt.Println("Error response from Sonar API: ", resp.Status, string(body))
-		os.Exit(1)
+		log.Fatal("Error response from Sonar API: ", resp.Status, string(body))
 	}
 	// Unmarshal it to golang struct
 	var stats Stats
 	if err := json.Unmarshal(body, &stats); err != nil {
-		fmt.Println("Error in UnMarshaling: ", err)
-		os.Exit(1)
+		log.Fatal("Error in UnMarshaling: ", err)
 	}
 	fmt.Println("Done")
 	return stats
