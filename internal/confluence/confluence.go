@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
-	"gitlab.group.one/sonar-to-confluence/config"
-	"gitlab.group.one/sonar-to-confluence/sonar"
+	"gitlab.group.one/sonar-to-confluence/internal/config"
+	"gitlab.group.one/sonar-to-confluence/internal/sonar"
 )
 
 type Confluence struct {
@@ -35,29 +35,26 @@ func (c Confluence) fetchPage() Page {
 	req.Header.Add("Authorization", "Basic "+key)
 
 	client := &http.Client{
-		Timeout: time.Second * 5,
+		Timeout: time.Second * 10,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("[getByPageId]Error in fetching Confluence API", err)
-		os.Exit(1)
+		log.Fatal("[getByPageId]Error in fetching Confluence API", err)
 	}
 	defer resp.Body.Close()
 	// Read Response
 	body, err := io.ReadAll(resp.Body)
+
 	if err != nil {
-		fmt.Println("[getByPageId]Error in reading response body", err)
-		os.Exit(1)
+		log.Fatal("[getByPageId]Error in reading response body", err)
 	}
 	if resp.StatusCode != 200 {
-		fmt.Println("[getByPageId]Error response from Confluence API: ", resp.Status, string(body))
-		os.Exit(1)
+		log.Fatal("[getByPageId]Error response from Confluence API: ", resp.Status, string(body))
 	}
 	// Unmarshal it to golang struct
 	var page Page
 	if err := json.Unmarshal(body, &page); err != nil {
-		fmt.Println("[getByPageId]Error in UnMarshaling: ", err)
-		os.Exit(1)
+		log.Fatal("[getByPageId]Error in UnMarshaling: ", err)
 	}
 	return page
 }
@@ -93,19 +90,16 @@ func (c Confluence) UpdateStats(stats []sonar.Stats) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("[updateByPageId]Error in fetching Confluence API", err)
-		os.Exit(1)
+		log.Fatal("[updateByPageId]Error in fetching Confluence API", err)
 	}
 	defer resp.Body.Close()
 	// Read Response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("[updateByPageId]Error in reading response body", err)
-		os.Exit(1)
+		log.Fatal("[updateByPageId]Error in reading response body", err)
 	}
 	if resp.StatusCode != 200 {
-		fmt.Println("[updateByPageId]Error response from Confluence API: ", resp.Status, string(body))
-		os.Exit(1)
+		log.Fatal("[updateByPageId]Error response from Confluence API: ", resp.Status, string(body))
 	}
 	fmt.Println("Stats updated to confluence page! Success.")
 }

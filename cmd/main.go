@@ -1,9 +1,9 @@
 package main
 
 import (
-	"gitlab.group.one/sonar-to-confluence/config"
-	"gitlab.group.one/sonar-to-confluence/confluence"
-	"gitlab.group.one/sonar-to-confluence/sonar"
+	"gitlab.group.one/sonar-to-confluence/internal/config"
+	"gitlab.group.one/sonar-to-confluence/internal/confluence"
+	"gitlab.group.one/sonar-to-confluence/internal/sonar"
 )
 
 func main() {

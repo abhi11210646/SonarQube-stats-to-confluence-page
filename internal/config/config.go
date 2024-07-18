@@ -25,6 +25,7 @@ type Config struct {
 }
 
 func GetConfig() Config {
+	godotenv.Load(".env")
 	return Config{
 		Confluence: ConfluenceConfig{
 			Host:   "https://group-one.atlassian.net/wiki/rest/",
@@ -48,8 +49,4 @@ func GetConfig() Config {
 			},
 		},
 	}
-}
-
-func init() {
-	godotenv.Load(".env")
 }
