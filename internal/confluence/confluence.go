@@ -5,33 +5,55 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
-	"gitlab.group.one/sonar-to-confluence/internal/config"
-	"gitlab.group.one/sonar-to-confluence/internal/sonar"
+	config "gitlab.group.one/sonar-to-confluence/internal"
 )
 
-type Confluence struct {
-	config.Config
+type SonarClient interface {
+	StatsHTML() string
 }
 
-func NewConfluenceClient(config config.Config) Confluence {
+type Confluence struct {
+	config config.ConfluenceConfig
+	sonar  SonarClient
+}
+
+type Page struct {
+	Title   string  `json:"title"`
+	Type    string  `json:"type"`
+	Body    Body    `json:"body"`
+	Version Version `json:"version"`
+}
+type Body struct {
+	Storage `json:"storage"`
+}
+
+type Storage struct {
+	Value          string `json:"value"`
+	Representation string `json:"representation"`
+}
+type Version struct {
+	Number  int8   `json:"number"`
+	Message string `json:"message"`
+}
+
+func NewConfluenceClient(config config.ConfluenceConfig, sonar SonarClient) Confluence {
 	return Confluence{
 		config,
+		sonar,
 	}
 }
 
-func (c Confluence) fetchPage() Page {
-	confluenceConfig := c.Confluence
-	apiEndpoint := confluenceConfig.Host + "/api/content/" + strconv.Itoa(confluenceConfig.PageId) + "?expand=body.storage,version"
+func (c Confluence) FetchPage() Page {
+	apiEndpoint := c.config.Host + "/api/content/" + strconv.Itoa(c.config.PageId) + "?expand=body.storage,version"
 
 	req, _ := http.NewRequest("GET", apiEndpoint, nil)
-	key := base64.StdEncoding.EncodeToString([]byte(confluenceConfig.ApiKey))
+	key := base64.StdEncoding.EncodeToString([]byte(c.config.ApiKey))
 	req.Header.Add("Authorization", "Basic "+key)
 
 	client := &http.Client{
@@ -59,21 +81,20 @@ func (c Confluence) fetchPage() Page {
 	return page
 }
 
-func (c Confluence) UpdateStats(stats []sonar.Stats) {
-	confluenceConfig := c.Confluence
-	apiEndpoint := confluenceConfig.Host + "/api/content/" + strconv.Itoa(confluenceConfig.PageId) + "?expand=body.storage"
-	page := c.fetchPage()
+func (c Confluence) UpdatePage() {
+	apiEndpoint := c.config.Host + "/api/content/" + strconv.Itoa(c.config.PageId) + "?expand=body.storage"
+	page := c.FetchPage()
 	newPage := Page{
 		Title: page.Title,
 		Type:  page.Type,
 		Version: Version{
 			Number:  page.Version.Number + 1,
-			Message: "Updated by CronJob",
+			Message: "Updated by CronJob...",
 		},
 		Body: Body{
 			Storage: Storage{
 				Representation: "storage",
-				Value:          generetaeHTML(stats, c.Sonar.Metrics),
+				Value:          c.sonar.StatsHTML(),
 			},
 		},
 	}
@@ -81,7 +102,7 @@ func (c Confluence) UpdateStats(stats []sonar.Stats) {
 	page_bytes, _ := json.Marshal(newPage)
 
 	req, _ := http.NewRequest("PUT", apiEndpoint, bytes.NewReader(page_bytes))
-	key := base64.StdEncoding.EncodeToString([]byte(confluenceConfig.ApiKey))
+	key := base64.StdEncoding.EncodeToString([]byte(c.config.ApiKey))
 	req.Header.Add("Authorization", "Basic "+key)
 	req.Header.Add("Content-Type", "application/json")
 
@@ -102,79 +123,4 @@ func (c Confluence) UpdateStats(stats []sonar.Stats) {
 		log.Fatal("[updateByPageId]Error response from Confluence API: ", resp.Status, string(body))
 	}
 	fmt.Println("Stats updated to confluence page! Success.")
-}
-
-func generetaeHTML(stats []sonar.Stats, keys []string) string {
-	// Mappings for Header Title
-	Columns := map[string]string{
-		"name":                    "Product",
-		"alert_status":            "Quality Gate",
-		"code_smells":             "Code Smells",
-		"bugs":                    "Bugs",
-		"critical_severity_vulns": "Vulnerabilities",
-	}
-	// Table Header
-	headers := make([]string, len(keys)+1)
-	headers[0] = "Product" // First column Product name
-	for i, k := range keys {
-		if name, ok := Columns[k]; ok {
-			headers[i+1] = name
-		} else {
-			headers[i+1] = k
-		}
-	}
-
-	// Table Body
-	body := [][]string{}
-	for _, stat := range stats {
-		metrics := make(map[string]string)
-		for _, v := range stat.Component.Measures {
-			metrics[v.Metric] = v.Value
-		}
-		s := make([]string, len(stat.Component.Measures)+1)
-		s[0] = stat.Component.Name // First column is Product Name
-
-		for i, k := range keys {
-			if metrics[k] == "ERROR" {
-				s[i+1] = "Failed"
-			} else {
-				s[i+1] = metrics[k]
-			}
-		}
-		body = append(body, s)
-	}
-	// Template Data for HTML parser
-	var TemplateData = struct {
-		Headers []string
-		Body    [][]string
-	}{
-		Headers: headers,
-		Body:    body,
-	}
-	const html = `<table data-table-width="760" data-layout="default" ac:local-id="091ca39e-2b3b-4a0c-8720-7ee499fc6d65">
-		<tbody>
-				<tr>
-					{{ range .Headers }}
-					<th><p><strong>{{.}}</strong></p></th>
-					{{end}}
-				</tr>
-
-				
-				{{range .Body}}
-				<tr>
-				{{range .}}
-				 <td> {{ . }} </td>
-				{{end}}
-				</tr>
-				{{end}}
-				
-				
-		</tbody>
-	</table>`
-
-	t, _ := template.New("confluence").Parse(html)
-
-	var buf bytes.Buffer
-	t.Execute(&buf, TemplateData)
-	return buf.String()
 }

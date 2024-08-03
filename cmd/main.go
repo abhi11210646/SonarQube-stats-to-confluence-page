@@ -1,19 +1,19 @@
 package main
 
 import (
-	"gitlab.group.one/sonar-to-confluence/internal/config"
+	"github.com/joho/godotenv"
+	config "gitlab.group.one/sonar-to-confluence/internal"
 	"gitlab.group.one/sonar-to-confluence/internal/confluence"
 	"gitlab.group.one/sonar-to-confluence/internal/sonar"
 )
 
 func main() {
-	config := config.GetConfig()
-	sonarClient := sonar.NewSonarClient(config)
-	// Fetch all stats
-	var stats []sonar.Stats
-	for _, projectKey := range config.Sonar.Projects {
-		stats = append(stats, sonarClient.FetchStats(projectKey))
-	}
+	godotenv.Load(".env")
+	//Create sonar Client
+	sonarConfig := config.GetSonarConfig()
+	sonarClient := sonar.NewSonarClient(sonarConfig)
 	// Update stats to confluence page
-	confluence.NewConfluenceClient(config).UpdateStats(stats)
+	confluenceConfig := config.GetConfluenceConfig()
+	confluenceClient := confluence.NewConfluenceClient(confluenceConfig, sonarClient)
+	confluenceClient.UpdatePage()
 }
