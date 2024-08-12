@@ -49,7 +49,7 @@ func NewConfluenceClient(config config.ConfluenceConfig, sonar SonarClient) Conf
 	}
 }
 
-func (c Confluence) FetchPage() Page {
+func (c Confluence) FetchPage() (*Page, error) {
 	apiEndpoint := c.config.Host + "/api/content/" + strconv.Itoa(c.config.PageId) + "?expand=body.storage,version"
 
 	req, _ := http.NewRequest("GET", apiEndpoint, nil)
@@ -61,29 +61,32 @@ func (c Confluence) FetchPage() Page {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal("[getByPageId]Error in fetching Confluence API", err)
+		return nil, fmt.Errorf("[getByPageId]Error in fetching Confluence API %w", err)
 	}
 	defer resp.Body.Close()
 	// Read Response
 	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
-		log.Fatal("[getByPageId]Error in reading response body", err)
+		return nil, fmt.Errorf("[getByPageId]Error in reading response body %w", err)
 	}
 	if resp.StatusCode != 200 {
-		log.Fatal("[getByPageId]Error response from Confluence API: ", resp.Status, string(body))
+		return nil, fmt.Errorf("[getByPageId]Error response from Confluence API: %v, %v", resp.Status, string(body))
 	}
 	// Unmarshal it to golang struct
-	var page Page
-	if err := json.Unmarshal(body, &page); err != nil {
-		log.Fatal("[getByPageId]Error in UnMarshaling: ", err)
+	page := &Page{}
+	if err := json.Unmarshal(body, page); err != nil {
+		return nil, fmt.Errorf("[getByPageId]Error in UnMarshaling: %w", err)
 	}
-	return page
+	return page, nil
 }
 
 func (c Confluence) UpdatePage() {
 	apiEndpoint := c.config.Host + "/api/content/" + strconv.Itoa(c.config.PageId) + "?expand=body.storage"
-	page := c.FetchPage()
+	page, err := c.FetchPage()
+	if err != nil {
+		log.Fatal("[UpdatePage]Error in FetchPage: ", err)
+	}
 	newPage := Page{
 		Title: page.Title,
 		Type:  page.Type,
