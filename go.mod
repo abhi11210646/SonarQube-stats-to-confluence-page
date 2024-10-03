@@ -1,4 +1,4 @@
-module sonar-to-confluence
+module gitlab.group.one/sonar-to-confluence
 
 go 1.20
 

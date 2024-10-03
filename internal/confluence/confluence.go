@@ -8,14 +8,13 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
-	config "sonar-to-confluence/internal"
+	config "gitlab.group.one/sonar-to-confluence/internal"
 )
 
 type SonarClient interface {
-	StatsHTML() string
+	StatsHTML() (string, error)
 }
 
 type Confluence struct {
@@ -38,54 +37,72 @@ type Storage struct {
 	Representation string `json:"representation"`
 }
 type Version struct {
-	Number  int8   `json:"number"`
+	Number  int    `json:"number"`
 	Message string `json:"message"`
 }
 
-func NewConfluenceClient(config config.ConfluenceConfig, sonar SonarClient) Confluence {
-	return Confluence{
+func NewConfluenceClient(config config.ConfluenceConfig, sonar SonarClient) *Confluence {
+	return &Confluence{
 		config,
 		sonar,
 	}
 }
 
-func (c Confluence) FetchPage() (*Page, error) {
-	apiEndpoint := c.config.Host + "/api/content/" + strconv.Itoa(c.config.PageId) + "?expand=body.storage,version"
-
-	req, _ := http.NewRequest("GET", apiEndpoint, nil)
+func (c *Confluence) addAuthHeader(req *http.Request) {
 	key := base64.StdEncoding.EncodeToString([]byte(c.config.ApiKey))
 	req.Header.Add("Authorization", "Basic "+key)
+}
+
+func (c *Confluence) makeRequest(method string, apiEndpoint string, body io.Reader) (*http.Response, error) {
+	req, _ := http.NewRequest(method, apiEndpoint, body)
+
+	// Add auth
+	c.addAuthHeader(req)
+
+	if method == "PUT" {
+		req.Header.Add("Content-Type", "application/json")
+	}
 
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
-	resp, err := client.Do(req)
+	return client.Do(req)
+}
+
+func (c *Confluence) FetchPage() (Page, error) {
+	apiEndpoint := fmt.Sprintf("%s/api/content/%s?expand=body.storage,version", c.config.Host, c.config.PageID)
+
+	resp, err := c.makeRequest("GET", apiEndpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("[getByPageId]Error in fetching Confluence API %w", err)
+		return Page{}, fmt.Errorf("failed to fetch Confluence page: %w", err)
 	}
 	defer resp.Body.Close()
 	// Read Response
 	body, err := io.ReadAll(resp.Body)
-
 	if err != nil {
-		return nil, fmt.Errorf("[getByPageId]Error in reading response body %w", err)
+		return Page{}, fmt.Errorf("failed to read response body: %w", err)
 	}
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("[getByPageId]Error response from Confluence API: %v, %v", resp.Status, string(body))
+	if resp.StatusCode != http.StatusOK {
+		return Page{}, fmt.Errorf("Confluence API error: %s - %s", resp.Status, string(body))
 	}
 	// Unmarshal it to golang struct
-	page := &Page{}
-	if err := json.Unmarshal(body, page); err != nil {
-		return nil, fmt.Errorf("[getByPageId]Error in UnMarshaling: %w", err)
+	var page Page
+	if err := json.Unmarshal(body, &page); err != nil {
+		return Page{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 	return page, nil
 }
 
-func (c Confluence) UpdatePage() {
-	apiEndpoint := c.config.Host + "/api/content/" + strconv.Itoa(c.config.PageId) + "?expand=body.storage"
+func (c *Confluence) UpdatePage() error {
+	apiEndpoint := fmt.Sprintf("%s/api/content/%s?expand=body.storage", c.config.Host, c.config.PageID)
+
 	page, err := c.FetchPage()
 	if err != nil {
-		log.Fatal("[UpdatePage]Error in FetchPage: ", err)
+		return fmt.Errorf("failed to fetch existing page: %w", err)
+	}
+	html, err := c.sonar.StatsHTML()
+	if err != nil {
+		return err
 	}
 	newPage := Page{
 		Title: page.Title,
@@ -97,33 +114,29 @@ func (c Confluence) UpdatePage() {
 		Body: Body{
 			Storage: Storage{
 				Representation: "storage",
-				Value:          c.sonar.StatsHTML(),
+				Value:          html,
 			},
 		},
 	}
 
-	page_bytes, _ := json.Marshal(newPage)
-
-	req, _ := http.NewRequest("PUT", apiEndpoint, bytes.NewReader(page_bytes))
-	key := base64.StdEncoding.EncodeToString([]byte(c.config.ApiKey))
-	req.Header.Add("Authorization", "Basic "+key)
-	req.Header.Add("Content-Type", "application/json")
-
-	client := &http.Client{
-		Timeout: time.Second * 5,
-	}
-	resp, err := client.Do(req)
+	page_bytes, err := json.Marshal(newPage)
 	if err != nil {
-		log.Fatal("[updateByPageId]Error in fetching Confluence API", err)
+		return fmt.Errorf("failed to marshal new page data: %w", err)
+	}
+
+	resp, err := c.makeRequest("PUT", apiEndpoint, bytes.NewReader(page_bytes))
+	if err != nil {
+		return fmt.Errorf("failed to update Confluence page: %w", err)
 	}
 	defer resp.Body.Close()
 	// Read Response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal("[updateByPageId]Error in reading response body", err)
+		return fmt.Errorf("failed to read response body: %w", err)
 	}
-	if resp.StatusCode != 200 {
-		log.Fatal("[updateByPageId]Error response from Confluence API: ", resp.Status, string(body))
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Confluence API error: %s - %s", resp.Status, string(body))
 	}
-	fmt.Println("Stats updated to confluence page! Success.")
+	log.Println("Confluence page updated successfully.")
+	return nil
 }

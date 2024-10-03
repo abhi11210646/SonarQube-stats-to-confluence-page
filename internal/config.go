@@ -1,8 +1,29 @@
 package config
 
 import (
+	"fmt"
 	"os"
 )
+
+const (
+	SonarHost      = "https://sonarqube.one.com"
+	ConfluenceHost = "https://group-one.atlassian.net/wiki/rest/"
+)
+
+type Config struct {
+	Sonar      SonarConfig
+	Confluence ConfluenceConfig
+}
+
+func (c *Config) Validate() error {
+	if c.Sonar.ApiKey == "" {
+		return fmt.Errorf("SONAR_API_KEY is required")
+	}
+	if c.Confluence.ApiKey == "" {
+		return fmt.Errorf("CONFLUENCE_API_KEY is required")
+	}
+	return nil
+}
 
 type SonarConfig struct {
 	Host     string
@@ -14,32 +35,37 @@ type SonarConfig struct {
 type ConfluenceConfig struct {
 	Host   string
 	ApiKey string
-	PageId int
+	PageID string
 }
 
-func GetConfluenceConfig() ConfluenceConfig {
-	return ConfluenceConfig{
-		Host:   "https://group-one.atlassian.net/wiki/rest/",
-		ApiKey: os.Getenv("CONFLUENCE_API_KEY"),
-		PageId: 32589873205,
+func LoadConfig() (*Config, error) {
+	cfg := &Config{
+		Sonar: SonarConfig{
+			Host:   SonarHost,
+			ApiKey: os.Getenv("SONAR_API_KEY"),
+			Projects: []string{
+				"app.webmail",
+				"CompanionApp",
+				"Webshop",
+				"one.com-wp-addons-assets",
+			},
+			Metrics: []string{
+				"alert_status",
+				"code_smells",
+				"critical_severity_vulns",
+				"bugs",
+			},
+		},
+		Confluence: ConfluenceConfig{
+			Host:   ConfluenceHost,
+			ApiKey: os.Getenv("CONFLUENCE_API_KEY"),
+			PageID: "32589873205",
+		},
 	}
-}
 
-func GetSonarConfig() SonarConfig {
-	return SonarConfig{
-		Host:   "https://sonarqube.one.com",
-		ApiKey: os.Getenv("SONAR_API_KEY"),
-		Projects: []string{
-			"app.webmail",
-			"CompanionApp",
-			"Webshop",
-			"one.com-wp-addons-assets",
-		},
-		Metrics: []string{
-			"alert_status",
-			"code_smells",
-			"critical_severity_vulns",
-			"bugs",
-		},
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
+
+	return cfg, nil
 }

@@ -6,13 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"text/template"
 	"time"
 
-	config "sonar-to-confluence/internal"
+	config "gitlab.group.one/sonar-to-confluence/internal"
 )
 
 type SonarClient struct {
@@ -35,9 +34,9 @@ func NewSonarClient(config config.SonarConfig) SonarClient {
 	}
 }
 
-func (s SonarClient) FetchStatsByProjectKey(projectKey string) Stats {
+func (s SonarClient) FetchStatsByProjectKey(projectKey string) (Stats, error) {
 	fmt.Printf("Fetching stats for %s... ", projectKey)
-	apiEndpoint := s.config.Host + "/api/measures/component?component=" + projectKey + "&metricKeys=" + strings.Join(s.config.Metrics, ",")
+	apiEndpoint := fmt.Sprintf("%s/api/measures/component?component=%s&metricKeys=%s", s.config.Host, projectKey, strings.Join(s.config.Metrics, ","))
 
 	// Create new request and pass headers
 	req, _ := http.NewRequest("GET", apiEndpoint, nil)
@@ -49,39 +48,46 @@ func (s SonarClient) FetchStatsByProjectKey(projectKey string) Stats {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Error in fetching SonarStats", err)
+		return Stats{}, fmt.Errorf("error in fetching SonarStats %w", err)
 	}
 	defer resp.Body.Close()
 	// Read Response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal("Error in reading response body", err)
+		return Stats{}, fmt.Errorf("error in reading response body %w", err)
 	}
-	if resp.StatusCode != 200 {
-		log.Fatal("Error response from Sonar API: ", resp.Status, string(body))
+	if resp.StatusCode != http.StatusOK {
+		return Stats{}, fmt.Errorf("error response from Sonar API: %s - %s", resp.Status, string(body))
 	}
 	// Unmarshal it to golang struct
 	var stats Stats
 	if err := json.Unmarshal(body, &stats); err != nil {
-		log.Fatal("Error in UnMarshaling: ", err)
+		return Stats{}, fmt.Errorf("error in UnMarshaling:  %w", err)
 	}
 	fmt.Println("Done")
-	return stats
+	return stats, nil
 }
 
-func (s SonarClient) FetchStats() []Stats {
+func (s SonarClient) FetchStats() ([]Stats, error) {
 	var stats []Stats
 	// Fetch all stats
 	for _, projectKey := range s.config.Projects {
-		stats = append(stats, s.FetchStatsByProjectKey(projectKey))
+		projectStats, err := s.FetchStatsByProjectKey(projectKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch stats for project %s: %w", projectKey, err)
+		}
+		stats = append(stats, projectStats)
 	}
-	return stats
+	return stats, nil
 }
 
-func (s SonarClient) StatsHTML() string {
+func (s SonarClient) StatsHTML() (string, error) {
 	keys := s.config.Metrics
 	// Fetch all stats of given projects
-	stats := s.FetchStats()
+	stats, err := s.FetchStats()
+	if err != nil {
+		return "", fmt.Errorf("error in FetchStats:  %w", err)
+	}
 	// Mappings for Header Title
 	Columns := map[string]string{
 		"name":                    "Product",
@@ -149,9 +155,14 @@ func (s SonarClient) StatsHTML() string {
 		</tbody>
 	</table>`
 
-	t, _ := template.New("confluence").Parse(html)
+	t, err := template.New("confluence").Parse(html)
+	if err != nil {
+		return "", fmt.Errorf("error in template.Parse:  %w", err)
+	}
 
 	var buf bytes.Buffer
-	t.Execute(&buf, TemplateData)
-	return buf.String()
+	if err := t.Execute(&buf, TemplateData); err != nil {
+		return "", fmt.Errorf("error in Execute:  %w", err)
+	}
+	return buf.String(), nil
 }

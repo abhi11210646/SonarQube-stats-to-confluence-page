@@ -10,7 +10,7 @@ COPY . ./
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./sonar-to-confluence ./cmd
 
-FROM {DOCKER_HOST}/standard-images/ubuntu:focal
+FROM harbor.one.com/standard-images/ubuntu:focal
 
 WORKDIR /src
 

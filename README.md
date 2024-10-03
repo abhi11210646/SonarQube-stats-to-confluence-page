@@ -2,7 +2,7 @@
 
 ### Sonar API_KEY
 ```shell
-https://{SONAR_HOST}/account/security
+https://sonarqube.one.com/account/security
 ```
 
 ### Confluence API_KEY
